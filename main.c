@@ -57,8 +57,8 @@ int main(int argc, char *argv[]){
                 return 0;
             case 'h':
             case '?':
-                printf("ラインエディタedline\n\n"
-                       "起動方法 : edline ファイル名\n"
+                printf("ラインエディタMyLineEditor\n\n"
+                       "起動方法 : MyLineEditor ファイル名\n"
                        "\nコマンド : \n%s", gcpHelpMessage);
                 return 0;
             }
