@@ -42,6 +42,7 @@ void List(int start, int end);
 int  LoadFile(char *fileName);
 int  Quit();
 int  SaveFile(char *fileName);
+char *my_gets(char* s);
 
 int main(int argc, char *argv[]){
     int iCount;
@@ -106,7 +107,17 @@ void Delete(int start, int end){
 void Edit(int start){
 }
 
+// ユーザーが入力したコマンド文字列から、コマンドの種別を表す１文字を抜き出す関数
+// 例：「1-3l」から「l」を抜き出す
 char GetCommandChar(char *command){
+    char carrCommandChar[] = "adhilqADHILQ?"; // コマンド文字と解釈すべき文字の一覧
+    unsigned long ulCount;
+
+    for(ulCount = 0; ulCount < strlen(carrCommandChar); ulCount++){
+        if(NULL != strchr(command, carrCommandChar[ulCount])){
+            return tolower(carrCommandChar[ulCount]);
+        }
+    }
     return 0;
 }
 
@@ -122,7 +133,53 @@ void Insert(int start){
 }
 
 int Interact(){
-    return 0;
+    char carrCommand[MAX_CHAR];  // ユーザーが入力したコマンドを文字列を一時保管する変数
+    char cCommandChar;           // コマンドの種別を示す変数
+    int iStart, iEnd;            // ユーザーが入力したコマンド操作の開始行と終了行を格納する変数
+
+    for(;;){
+        printf("USER >> ");
+        if(NULL == my_gets(carrCommand)) continue;
+        if(strcmp(carrCommand, "") != -1){
+            cCommandChar = GetCommandChar(carrCommand);
+            iStart       = GetStart(carrCommand);
+            iEnd         = GetEnd(carrCommand);
+
+            switch(cCommandChar){
+            case 'q':
+                return Quit();
+            case 'l':
+                if(iStart == NOT_SET) iStart = 1;
+                if(iEnd   == NOT_SET) iEnd   = giLineCount;
+                List(iStart, iEnd);
+                break;
+            case 'a':
+                Append();
+                break;
+            case 'i':
+                if(iStart == NOT_SET){
+                    Append();
+                }else{
+                    Insert(iStart);
+                }
+                break;
+            case 'd':
+                if(iStart == NOT_SET){
+                    printf("行を指定して下さい\n");
+                }else{
+                    if(iEnd == NOT_SET) iEnd = iStart;
+                    Delete(iStart, iEnd);
+                }
+                break;
+            case 'h':
+            case '?':
+                printf("%s", gcpHelpMessage);
+                break;
+            default:
+                if(iStart != NOT_SET) Edit(iStart);
+            }
+        }
+    }
 }
 
 void List(int start, int end){
@@ -185,4 +242,29 @@ int Quit(){
 
 int SaveFile(char *fileName){
     return 0;
+}
+
+// gets関数の自作代替関数
+char *my_gets(char* s){
+    char *cpLn;
+    int  iChar;
+
+    // fgets : ストリーム (stream) から 1 行単位で文字列を読み取る
+    if(fgets(s, MAX_CHAR, stdin) == NULL) return NULL;
+
+    // 改行文字を検索
+    cpLn = strchr(s, '\n');
+
+    if(cpLn){
+        // 改行文字があった場合、終端文字に置き換える
+        *cpLn = '\0';
+    }else{
+        // 入力ストリーム上に文字が残ってる場合、改行文字が読み取られるまで空読みする
+        for(;;){
+            // getchar : 標準入力 (standard input) から 1 文字単位で文字を読み取る
+            iChar = getchar();
+            if(iChar == '\n' || iChar == EOF) break;
+        }
+    }
+    return s;
 }
