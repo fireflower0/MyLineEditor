@@ -28,7 +28,7 @@ char *gcpHelpMessage =
 
 char *gcpFileName;
 char **gcppLine = NULL;
-int  giLineCount = 0;
+unsigned long  gulLineCount = 0;
 
 void Append();
 void Delete(int start, int end);
@@ -45,7 +45,7 @@ int  SaveFile(char *fileName);
 char *my_gets(char* s);
 
 int main(int argc, char *argv[]){
-    int iCount;
+    unsigned long iCount;
     int iResult = SUCCESS;
 
     // コマンドライン引数のチェック
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]){
         if(iResult == ERROR_CANNOT_OPEN_FILE){
             printf("新しいファイルです\n");
         }else{
-            printf("%d行読み込みました\n", giLineCount);
+            printf("%ld行読み込みました\n", gulLineCount);
         }
 
         // ユーザーとの受け答え
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]){
     }
 
     // １行ごとのメモリ解放
-    for(iCount = 0; iCount < giLineCount; iCount++){
+    for(iCount = 0; iCount < gulLineCount; iCount++){
         if(gcppLine[iCount]) free(gcppLine[iCount]);
     }
     // 全行へのポインタが格納された領域を開放
@@ -122,11 +122,66 @@ char GetCommandChar(char *command){
 }
 
 int GetStart(char *command){
-    return 0;
+    char carrDigit[11];   // 開始行の数値を構成する文字を格納する変数
+                          // ※ 32ビット整数の上限が10桁なので、配列の大きさを11に設定
+    unsigned long ulCount1, ulResult; // commandの何文字目を処理しているかを格納するカウンタ変数
+    unsigned long ulCount2 = 0;       // 変数carrDigitの何文字目を処理しているかを格納するカウンタ変数
+
+    // 1文字目が数値かチェック
+    if(!isdigit(command[0])) return NOT_SET;
+
+    // 1文字目から数値でない文字が出てくるまでループ
+    for(ulCount1 = 0; ulCount1 < strlen(command); ulCount1++){
+        if(isdigit(command[ulCount1])){
+            carrDigit[ulCount2] = command[ulCount1];
+            ulCount2++;
+        }else{
+            break;
+        }
+    }
+
+    // 最後にNULL文字を入れる
+    carrDigit[ulCount2] = '\0';
+
+    // 文字列を数値に変換
+    ulResult = atoi(carrDigit);
+    
+    if(ulResult < 1) return 1;
+    if(ulResult > gulLineCount) return gulLineCount;
+    return ulResult;
 }
 
 int GetEnd(char *command){
-    return 0;
+    char carrDigit[11];
+    unsigned long ulCount1, ulResult;
+    unsigned long ulCount2 = 0;
+    char *cpStart;
+
+    // 「-」以降のアドレスを取得
+    cpStart = strchr(command, '-');
+
+    // 「-」が見つからない場合はNOT_SETを返して終了
+    if(cpStart == NULL) return NOT_SET;
+
+    for(ulCount1 = 1; ulCount1 < strlen(cpStart); ulCount1++){
+        if(isdigit(cpStart[ulCount1])){
+            carrDigit[ulCount2] = cpStart[ulCount1];
+            ulCount2++;
+        }else{
+            break;
+        }
+    }
+
+    if(ulCount2 == 0){
+        // 「1-l」のように入力された場合もNOT_SETを返す
+        return NOT_SET;
+    }else{
+        carrDigit[ulCount2] = '\0';
+        ulResult = atoi(carrDigit);
+        if(ulResult < 1) return 1;
+        if(ulResult > gulLineCount) return gulLineCount;
+        return ulResult;
+    }
 }
 
 void Insert(int start){
@@ -150,7 +205,7 @@ int Interact(){
                 return Quit();
             case 'l':
                 if(iStart == NOT_SET) iStart = 1;
-                if(iEnd   == NOT_SET) iEnd   = giLineCount;
+                if(iEnd   == NOT_SET) iEnd   = gulLineCount;
                 List(iStart, iEnd);
                 break;
             case 'a':
@@ -183,6 +238,15 @@ int Interact(){
 }
 
 void List(int start, int end){
+    int iCount;
+
+    if(gulLineCount > 0){
+        for(iCount = start; iCount <= end; iCount++){
+            printf(FORMAT, iCount, gcppLine[iCount - 1]);
+        }
+    }else{
+        printf("表示できる行がありません\n");
+    }
 }
 
 int LoadFile(char *fileName){
@@ -202,14 +266,14 @@ int LoadFile(char *fileName){
     }else{
         // ファイルを最後まで読み込んで、行数を取得
         while(NULL != fgets(carrBuffer, MAX_CHAR, fp)){
-            giLineCount++;
+            gulLineCount++;
         }
         
         // ファイルの最初に戻る
         rewind(fp);
 
         // 文字へのポインタを行数分格納できるメモリ空間を確保
-        cppLineInitialValue = (char**)calloc(giLineCount, sizeof(char*));
+        cppLineInitialValue = (char**)calloc(gulLineCount, sizeof(char*));
         // gcppLineにも値を入れる
         gcppLine = cppLineInitialValue;
 
