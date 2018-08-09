@@ -19,9 +19,9 @@ char *gcpErrorMessage[4] = {
 };
 
 char *gcpHelpMessage =
-    "a : 追加(行頭のCtrl+z(Windows), Ctrl+d(Ubuntu)で終了)\n"
+    "a : 追加(行頭のCtrl+z(Windows)または、Ctrl+d(Ubuntu)で終了)\n"
     "d : 削除(「1d」「1-2d」のように行指定)\n"
-    "i : 挿入(「1i」のように行指定、行頭のCtrl+zで終了)\n"
+    "i : 挿入(「1i」のように行指定、行頭のCtrl+z(Windows)または、Ctrl+d(Ubuntu)で終了)\n"
     "l : 表示(「2l」「2-5l」のように行指定)\n"
     "q : 終了\n"
     "(行番号) : 編集\n";
