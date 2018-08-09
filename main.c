@@ -34,8 +34,8 @@ void Append();
 void Delete(unsigned long start, unsigned long end);
 void Edit(unsigned long start);
 char GetCommandChar(char *command);
-unsigned long  GetStart(char *command);
-unsigned long  GetEnd(char *command);
+unsigned long GetStart(char *command);
+unsigned long GetEnd(char *command);
 void Insert(unsigned long start);
 int  Interact();
 void List(unsigned long start, unsigned long end);
@@ -288,12 +288,47 @@ int LoadFile(char *fileName){
     return iResult;
 }
 
+// 終了処理
 int Quit(){
-    return 0;
+    char cCommand;
+    int  iResult = SUCCESS;
+
+    printf("保存しますか?(Y/N):");
+    cCommand = tolower(getchar());
+
+    if(cCommand == 'y'){
+        iResult = SaveFile(gcpFileName);
+    }
+    
+    return iResult;
 }
 
+// 保存処理
 int SaveFile(char *fileName){
-    return 0;
+    FILE *fp;
+    unsigned long ulCount;
+    int  iResult = SUCCESS;
+
+    if(gulLineCount > 0){
+        // 書き込みモードでファイルを開く
+        fp = fopen(fileName, "w");
+        
+        if(fp == NULL){
+            iResult = ERROR_CANNOT_OPEN_FILE;
+        }else{
+            for(ulCount = 0; ulCount < gulLineCount; ulCount++){
+                // fputs関数を使って1行ずつ書き込む
+                fputs(gcppLine[ulCount], fp);
+            }
+            if(0 != fclose(fp)){
+                iResult = ERROR_CANNOT_CLOSE_FILE;
+            }
+        }
+    }else{
+        // 行数が0の場合、ファイルは削除(空ファイルは必要ないため)
+        remove(fileName);
+    }
+    return iResult;
 }
 
 /***** 編集に関する処理 *****/
