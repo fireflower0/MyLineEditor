@@ -4,8 +4,8 @@
 #include <string.h>
 
 #define MAX_CHAR 65536
-#define FORMAT "%5d:%s"
-#define NOT_SET -1
+#define FORMAT "%5ld:%s"
+#define NOT_SET -1UL
 #define SUCCESS 0
 #define ERROR_ARGUMENT_NUMBER 1
 #define ERROR_CANNOT_OPEN_FILE 2
@@ -19,7 +19,7 @@ char *gcpErrorMessage[4] = {
 };
 
 char *gcpHelpMessage =
-    "a : 追加(行頭のCtrl+zで終了)\n"
+    "a : 追加(行頭のCtrl+z(Windows), Ctrl+d(Ubuntu)で終了)\n"
     "d : 削除(「1d」「1-2d」のように行指定)\n"
     "i : 挿入(「1i」のように行指定、行頭のCtrl+zで終了)\n"
     "l : 表示(「2l」「2-5l」のように行指定)\n"
@@ -31,14 +31,14 @@ char **gcppLine = NULL;
 unsigned long  gulLineCount = 0;
 
 void Append();
-void Delete(int start, int end);
-void Edit(int start);
+void Delete(unsigned long start, unsigned long end);
+void Edit(unsigned long start);
 char GetCommandChar(char *command);
-int  GetStart(char *command);
-int  GetEnd(char *command);
-void Insert(int start);
+unsigned long  GetStart(char *command);
+unsigned long  GetEnd(char *command);
+void Insert(unsigned long start);
 int  Interact();
-void List(int start, int end);
+void List(unsigned long start, unsigned long end);
 int  LoadFile(char *fileName);
 int  Quit();
 int  SaveFile(char *fileName);
@@ -98,15 +98,6 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-void Append(){
-}
-
-void Delete(int start, int end){
-}
-
-void Edit(int start){
-}
-
 // ユーザーが入力したコマンド文字列から、コマンドの種別を表す１文字を抜き出す関数
 // 例：「1-3l」から「l」を抜き出す
 char GetCommandChar(char *command){
@@ -121,7 +112,7 @@ char GetCommandChar(char *command){
     return 0;
 }
 
-int GetStart(char *command){
+unsigned long GetStart(char *command){
     char carrDigit[11];   // 開始行の数値を構成する文字を格納する変数
                           // ※ 32ビット整数の上限が10桁なので、配列の大きさを11に設定
     unsigned long ulCount1, ulResult; // commandの何文字目を処理しているかを格納するカウンタ変数
@@ -151,7 +142,7 @@ int GetStart(char *command){
     return ulResult;
 }
 
-int GetEnd(char *command){
+unsigned long GetEnd(char *command){
     char carrDigit[11];
     unsigned long ulCount1, ulResult;
     unsigned long ulCount2 = 0;
@@ -184,16 +175,13 @@ int GetEnd(char *command){
     }
 }
 
-void Insert(int start){
-}
-
 int Interact(){
     char carrCommand[MAX_CHAR];  // ユーザーが入力したコマンドを文字列を一時保管する変数
     char cCommandChar;           // コマンドの種別を示す変数
-    int iStart, iEnd;            // ユーザーが入力したコマンド操作の開始行と終了行を格納する変数
+    unsigned long iStart, iEnd;            // ユーザーが入力したコマンド操作の開始行と終了行を格納する変数
 
     for(;;){
-        printf("USER >> ");
+        printf("%s", "USER >> ");
         if(NULL == my_gets(carrCommand)) continue;
         if(strcmp(carrCommand, "") != -1){
             cCommandChar = GetCommandChar(carrCommand);
@@ -237,8 +225,8 @@ int Interact(){
     }
 }
 
-void List(int start, int end){
-    int iCount;
+void List(unsigned long start, unsigned long end){
+    unsigned long iCount;
 
     if(gulLineCount > 0){
         for(iCount = start; iCount <= end; iCount++){
@@ -307,6 +295,161 @@ int Quit(){
 int SaveFile(char *fileName){
     return 0;
 }
+
+/***** 編集に関する処理 *****/
+
+// 編集処理
+void Edit(unsigned long start){
+    char carrLine[MAX_CHAR];   // 一時的に行のデータを格納する変数
+
+    if(gulLineCount > 0){
+        printf(FORMAT, start, gcppLine[start - 1]);   // 行番号と現在の内容を表示
+        printf(FORMAT, start, "");                    // 新しい内容の入力を促す
+        if(NULL != my_gets(carrLine)){
+            strcat(carrLine, "\n");                   // 入力された文字列に改行文字を付加
+            free(gcppLine[start - 1]);                // これまで行の内容を保持していたメモリを開放
+            gcppLine[start - 1] = (char*)malloc(strlen(carrLine) + 1); // 入力された文字列の文字数に合わせて新たにメモリ確保
+            strcpy(gcppLine[start - 1], carrLine);    // 新しいメモリにコピー
+        }
+    }else{
+        printf("編集できる行がありません\n");
+    }
+}
+
+// 末尾に行を追加する処理
+void Append(){
+    unsigned long iCount;
+    char carrLine[MAX_CHAR];
+    char **cppOldLine = NULL;   // 現在使っているメモリ空間を一時的に保持する変数
+
+    // ユーザーに入力を促す
+    printf(FORMAT, gulLineCount + 1, "");
+
+    // ユーザーがEOF(Ctrl+z[Windows], Ctrl+d[Ubuntu])を入力するまでループ
+    while(NULL != my_gets(carrLine)){
+        strcat(carrLine, "\n");
+        gulLineCount++;         // 1行追加されたら、インクリメントする
+
+        // 現在の行の情報をチェック
+        if(!gcppLine){
+            // 行の情報がNULLだったらメモリを確保
+            gcppLine = (char**)calloc(gulLineCount, sizeof(char*));
+        }else{
+            // 行の情報が何かしら入っていたら一時退避し、
+            cppOldLine = gcppLine;
+            // 1行分大きいメモリ領域を確保する
+            gcppLine = (char**)calloc(gulLineCount, sizeof(char*));
+            // 退避した既存の情報を新しいメモリへコピー
+            for(iCount = 0; iCount < gulLineCount; iCount++){
+                gcppLine[iCount] = cppOldLine[iCount];
+            }
+            // 古いメモリ領域は開放
+            free(cppOldLine);
+        }
+
+        // ユーザーが今回入力した行のためのメモリを確保
+        gcppLine[gulLineCount - 1] = (char*)malloc(strlen(carrLine) + 1);
+        // 入力された文字列を新しいメモリへコピー
+        strcpy(gcppLine[gulLineCount - 1], carrLine);
+
+        // 次の行の入力を促す
+        printf(FORMAT, gulLineCount + 1, "");
+    }
+    printf("\n");
+}
+
+// 挿入処理
+void Insert(unsigned long start){
+    unsigned long ulCount;
+    char carrLine[MAX_CHAR];
+    char **cppOldLine = NULL;
+
+    if(gulLineCount > 0){
+        printf(FORMAT, start, "");
+
+        // ユーザーがEOF(Ctrl+z[Windows], Ctrl+d[Ubuntu])を入力するまでループ
+        while(NULL != my_gets(carrLine)){
+            strcat(carrLine, "\n");
+            gulLineCount++;
+
+            // 行の情報を退避
+            cppOldLine = gcppLine;
+
+            // 1行分大きいメモリ領域を確保
+            gcppLine = (char**)calloc(gulLineCount, sizeof(char*));
+
+            // 挿入する行より前の行を新しいメモリへコピーする
+            for(ulCount = 0; ulCount < start; ulCount++){
+                gcppLine[ulCount] = cppOldLine[ulCount];
+            }
+
+            // 新しい行のメモリを確保して、入力された文字列を新しいメモリへコピー
+            gcppLine[start - 1] = (char*)malloc(strlen(carrLine) + 1);
+            strcpy(gcppLine[start - 1], carrLine);
+
+            // 残りの行を新しいメモリへコピー
+            for(ulCount = start; ulCount < gulLineCount; ulCount++){
+                gcppLine[ulCount] = cppOldLine[ulCount - 1];
+            }
+
+            // 古いメモリ領域は開放
+            free(cppOldLine);
+
+            start++;
+
+            // 次の行の入力を促す
+            printf(FORMAT, start, "");
+        }
+        printf("\n");
+    }else{
+        // 現在の行数が0だったらAppend関数を呼び出す
+        Append();
+    }
+}
+
+// 削除処理
+void Delete(unsigned long start, unsigned long end){
+    unsigned long ulCount;
+    unsigned long ulHowManyLines = end - start + 1;
+    char **cppOldLine = NULL;
+
+    if(ulHowManyLines > 0){
+        if(gulLineCount > 0){
+            gulLineCount = gulLineCount - ulHowManyLines;
+            cppOldLine = gcppLine;
+
+            if(gulLineCount == 0){
+                // 行数が0になる場合は、NULLを格納
+                gcppLine = NULL;
+            }else{
+                // 削除された行数分小さくなったメモリ領域を確保
+                gcppLine = (char**)calloc(gulLineCount, sizeof(char*));
+            }
+
+            // 削除する行の前までを新しいメモリへコピー
+            for(ulCount = 0; ulCount < start - 1; ulCount++){
+                gcppLine[ulCount] = cppOldLine[ulCount];
+            }
+
+            // 削除する行が入っているメモリを開放
+            for(ulCount = start - 1; ulCount < end; ulCount++){
+                free(cppOldLine[ulCount]);
+            }
+
+            // 残りの行を新しいメモリへコピー
+            for(ulCount = start - 1; ulCount < gulLineCount; ulCount++){
+                gcppLine[ulCount] = cppOldLine[ulCount + ulHowManyLines];
+            }
+
+            // 古いメモリ領域は開放
+            free(cppOldLine);
+        }else{
+            printf("削除できる行がありません\n");
+        }
+    }
+}
+
+/***** ユーティリティ *****/
 
 // gets関数の自作代替関数
 char *my_gets(char* s){
